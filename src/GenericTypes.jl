@@ -1,6 +1,6 @@
 using AbstractAlgebra
 
-abstract type DiffRing <: AbstractAlgebra.Ring end
-abstract type DiffField <: AbstractAlgebra.Field end
-abstract type DiffRingElem <: AbstractAlgebra.RingElem end
-abstract type DiffFieldElem <: DiffRingElem end
+abstract type DifferentialRing <: AbstractAlgebra.Ring end
+abstract type DifferentialField <: AbstractAlgebra.Field end
+abstract type DifferentialRingElem <: AbstractAlgebra.RingElem end
+abstract type DifferentialFieldElem <: DifferentialRingElem end 
