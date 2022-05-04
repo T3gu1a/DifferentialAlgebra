@@ -16,31 +16,80 @@ function form_derivative(varname::String, order::Integer)
     return "$(varname)^($order)"
 end
 
+function form_partial_derivative(varname::String, order::Array{Int64,1})
+    return "$(varname)^($order)"
+end
+
+
+function list_lex_monomials(b::Array{Int64, 1})
+	if length(b)==1 
+		return [[j] for j in 0:b[1]]
+	else
+		return [append!([i],m) for i in 0:b[1] for m in list_lex_monomials(b[2:length(b)])]
+	end
+end
+
+function rev_list_lex_monomials(b::Array{Int64, 1})
+	if length(b)==1 
+		return [[j] for j in b[1]:-1:0]
+	else
+		return [append!([i],m) for i in b[1]:-1:0 for m in rev_list_lex_monomials(b[2:length(b)])]
+	end
+end
+
 #------------------------------------------------------------------------------
 
 mutable struct DifferentialPolyRing <: DifferentialRing
     base_ring::AbstractAlgebra.Ring
     poly_ring::MPolyRing
-    max_ord::Integer
+    max_ord::Array{Int64,1}
     varnames::Array{String, 1}
-    derivation::Dict{Any, Any}
-
-    function DifferentialPolyRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, max_ord=20)
-        all_varnames = [form_derivative(v, ord) for v in varnames for ord in 0:max_ord]
-        poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames)
-        derivation = Dict()
-        for v in varnames
-            for ord in 0:(max_ord - 1)
-                derivation[str_to_var(form_derivative(v, ord), poly_ring)] = 
-                    str_to_var(form_derivative(v, ord + 1), poly_ring)
-            end
-        end
-        return new(R, poly_ring, max_ord, varnames, derivation)
+    derivation::Array{Dict{Any, Any},1}
+	
+	function DifferentialPolyRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, ranking::Symbol, ordering::Symbol, max_ord::Array{Int64,1})
+        if length(max_ord)==1
+			if ranking == :var_deriv
+				all_varnames = [form_derivative(v, ord) for v in varnames for ord in max_ord[1]:-1:0]
+			elseif ranking == :deriv_var
+				all_varnames = [form_derivative(v, ord) for ord in max_ord[1]:-1:0 for v in varnames]
+			end
+			if ordering != :lex
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames,ordering=ordering)
+			else
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames)
+			end
+			derivation = Dict()
+			for v in varnames
+				for ord in 0:(max_ord[1] - 1)
+					derivation[str_to_var(form_derivative(v, ord), poly_ring)] = 
+						str_to_var(form_derivative(v, ord + 1), poly_ring)
+				end
+			end
+			return new(R, poly_ring, max_ord[1], varnames, derivation)
+		else
+			L = rev_list_lex_monomials(max_ord)
+			all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
+			poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames)
+			derivation = [Dict() for j in 1:length(max_ord)]
+			for v in varnames
+				for i in 1:length(max_ord)
+					for ord in L
+						if ord[i]<max_ord[i] 
+							updord = ord
+							updord[i]+=1
+							derivation[i][str_to_var(form_partial_derivative(v, ord), poly_ring)] = 
+							str_to_var(form_partial_derivative(v, updord), poly_ring)
+						end
+					end
+				end
+			end
+			return new(R, poly_ring, max_ord, varnames, derivation)
+		end
     end
 end
 
-function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, max_ord=20)
-	R = DifferentialPolyRing(R, varnames, max_ord)
+function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}; ranking::Symbol = :var_deriv, ordering::Symbol = :lex, max_ord::Array{Int64,1}=[20])
+	R = DifferentialPolyRing(R, varnames, ranking, ordering, max_ord)
     return R, Tuple([DiffIndet(R,v) for v in varnames])
 end
 
@@ -208,11 +257,22 @@ function d(a::DiffIndet)
     return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 1), parent(a).poly_ring))
 end
 
+#- today
+function d(a::Union{AbstractFloat, Integer, Rational})
+    return 0
+end
+#---
+
+#-- 
 function d(a::DifferentialRingElem, ord::Integer)
     if ord == 0
         return a
     end
     return d(d(a), ord - 1)
+end
+
+function d(a::Union{Integer,Rational}, ord::Integer)
+    return 0
 end
 
 #------------------------------------------------------------------------------
@@ -342,6 +402,36 @@ end
 function Base.:-(a::DifferentialRingElem)
     return parent(a)(-algdata(a))
 end
+
+#-today
+
+function Base.:-(a::DiffIndet)
+    return (-1)*a
+end
+
+function Base.://(a::DiffPoly, b::Union{Integer, Rational})
+	return a*(1//b)
+end
+
+function Base.://(a::DiffIndet, b::Union{Integer, Rational})
+	return a*(1//b)
+end
+
+function Base.:/(a::DiffPoly, b::Union{AbstractFloat,Integer,Rational})
+	return a*(1/b)
+end
+
+function Base.:/(a::DiffIndet, b::Union{AbstractFloat,Integer,Rational})
+	return a*(1/b)
+end
+
+#-----------------------------------------------------------------------------
+
+function Base.isless(a::DiffIndet, b::DiffIndet)
+    check_parent(a, b)
+	return parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring)))
+end
+
 
 #------------------------------------------------------------------------------
 
