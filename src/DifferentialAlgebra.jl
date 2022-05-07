@@ -58,14 +58,14 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 			else
 				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames)
 			end
-			derivation = Dict()
+			derivation = [Dict()]
 			for v in varnames
 				for ord in 0:(max_ord[1] - 1)
-					derivation[str_to_var(form_derivative(v, ord), poly_ring)] = 
+					derivation[1][str_to_var(form_derivative(v, ord), poly_ring)] = 
 						str_to_var(form_derivative(v, ord + 1), poly_ring)
 				end
 			end
-			return new(R, poly_ring, max_ord[1], varnames, derivation)
+			return new(R, poly_ring, max_ord, varnames, derivation)
 		else
 			L = rev_list_lex_monomials(max_ord)
 			all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
@@ -250,7 +250,7 @@ function d_aux(p::MPolyElem, der::Dict{Any, Any})
 end
 
 function d(a::DiffPoly)
-    return DiffPoly(parent(a), d_aux(algdata(a), parent(a).derivation))
+    return DiffPoly(parent(a), d_aux(algdata(a), parent(a).derivation[1]))
 end
 
 function d(a::DiffIndet)
