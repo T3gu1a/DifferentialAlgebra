@@ -143,6 +143,68 @@ AbstractAlgebra.parent_type(::Type{DifferentialRingElem}) = DifferentialPolyRing
 AbstractAlgebra.parent_type(::Type{DiffPoly}) = DifferentialPolyRing
 
 #------------------------------------------------------------------------------
+#comparisons
+
+#equality
+
+function DiffPoly_to_Bool(a::DiffPoly)
+	return convert(Bool,parse(Int64,"$(a)"))
+end
+
+function Base.:(==)(a::DifferentialRingElem, b::DifferentialRingElem)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(algdata(a) == algdata(b)))
+end
+
+function Base.:(==)(a::DiffIndet, b::DifferentialRingElem)
+	return false
+end
+
+function Base.:(==)(a::DifferentialRingElem, b::DiffIndet)
+	return false
+end
+
+function Base.:(==)(a::DiffIndet, b::DiffIndet)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) == DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+end
+
+
+#lessorgreather
+
+function Base.:<(a::DifferentialRingElem, b::DifferentialRingElem)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(algdata(a) < algdata(b)))
+end
+
+function Base.:<(a::DiffIndet, b::DifferentialRingElem)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < b))
+end
+
+function Base.:>(a::DiffIndet, b::DifferentialRingElem)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > b))
+end
+
+function Base.:<(a::DifferentialRingElem, b::DiffIndet)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(a < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+end
+
+function Base.:<(a::DiffIndet, b::DiffIndet)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+end
+
+function Base.:>(a::DiffIndet, b::DiffIndet)
+    check_parent(a, b)
+	return DiffPoly_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+end
+
+#---
+
+#-------------------------------------------------------------------------
 
 function Base.:+(a::DifferentialRingElem, b::DifferentialRingElem)
     check_parent(a, b)
