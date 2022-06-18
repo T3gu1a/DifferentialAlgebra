@@ -20,12 +20,20 @@ function form_partial_derivative(varname::String, order::Array{Int64,1})
     return "$(varname)^($order)"
 end
 
-
+#not used
 function list_lex_monomials(b::Array{Int64, 1})
 	if length(b)==1 
 		return [[j] for j in 0:b[1]]
 	else
 		return [append!([i],m) for i in 0:b[1] for m in list_lex_monomials(b[2:length(b)])]
+	end
+end
+
+function list_degrevlex_monomials(b::Array{Int64, 1})
+	if length(b)==1 
+		return [[j] for j in 0:b[1]]
+	else 
+		return sort!(rev_list_lex_monomials(b),lt=degrevlex_isless,rev=true)
 	end
 end
 
@@ -36,6 +44,17 @@ function rev_list_lex_monomials(b::Array{Int64, 1})
 		return [append!([i],m) for i in b[1]:-1:0 for m in rev_list_lex_monomials(b[2:length(b)])]
 	end
 end
+
+function degrevlex_isless(v1::Array{Int64, 1},v2::Array{Int64, 1})
+	if sum(v1)==sum(v2)
+		n1 = parse(Int64, join(v1))
+		n2 = parse(Int64, join(v2))
+		return (n1<n2 ? false : true)
+	else
+		return (sum(v1)<sum(v2) ? true : false)
+	end
+end
+
 
 #------------------------------------------------------------------------------
 
@@ -67,7 +86,11 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 			end
 			return new(R, poly_ring, max_ord, varnames, derivation)
 		else
-			L = rev_list_lex_monomials(max_ord)
+			if ranking == :lex
+				L = rev_list_lex_monomials(max_ord)
+			elseif ranking == :degrevlex
+				L = list_degrevlex_monomials(max_ord)
+			end
 			all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
 			poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames)
 			derivation = [Dict() for j in 1:length(max_ord)]
