@@ -98,7 +98,7 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 				for i in 1:length(max_ord)
 					for ord in L
 						if ord[i]<max_ord[i] 
-							updord = ord
+							updord = copy(ord)
 							updord[i]+=1
 							derivation[i][str_to_var(form_partial_derivative(v, ord), poly_ring)] = 
 							str_to_var(form_partial_derivative(v, updord), poly_ring)
@@ -335,21 +335,25 @@ function d_aux(p::MPolyElem, der::Dict{Any, Any})
 end
 
 function d(a::DiffPoly)
+	#if in the partial case then ERROR
     return DiffPoly(parent(a), d_aux(algdata(a), parent(a).derivation[1]))
 end
 
 function d(a::DiffIndet)
+	#if in the partial case then ERROR
     return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 1), parent(a).poly_ring))
 end
 
-#- today
+#-
 function d(a::Union{AbstractFloat, Integer, Rational})
+	#if in the partial case then ERROR
     return 0
 end
 #---
 
 #-- 
 function d(a::DifferentialRingElem, ord::Integer)
+	#if in the partial case then ERROR
     if ord == 0
         return a
     end
@@ -357,6 +361,28 @@ function d(a::DifferentialRingElem, ord::Integer)
 end
 
 function d(a::Union{Integer,Rational}, ord::Integer)
+	#if in the partial case then ERROR
+    return 0
+end
+
+#----------partial d -----------------------------------
+
+function d(a::DiffPoly,r::Array{Int64, 1})
+	result=algdata(a)
+	for i in 1:length(r)
+		for j in 1:r[i]
+			result = d_aux(result, parent(a).derivation[i])
+		end
+	end
+	return DiffPoly(parent(a), result)
+end
+
+function d(a::DiffIndet,r::Array{Int64, 1})
+	return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, r), parent(a).poly_ring))
+end
+
+#-
+function d(a::Union{AbstractFloat, Integer, Rational},r::Array{Int64, 1})
     return 0
 end
 
