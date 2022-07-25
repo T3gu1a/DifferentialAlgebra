@@ -65,12 +65,14 @@ mutable struct DifferentialPolyRing <: DifferentialRing
     varnames::Array{String, 1}
     derivation::Array{Dict{Any, Any},1}
 	
-	function DifferentialPolyRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, ranking::Symbol, ordering::Symbol, max_ord::Array{Int64,1})
+	function DifferentialPolyRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, ranking_dependent::Symbol, ranking_independent::Symbol, ordering::Symbol, max_ord::Array{Int64,1})
         if length(max_ord)==1
-			if ranking == :var_deriv
+			if ranking_dependent == :var_deriv
 				all_varnames = [form_derivative(v, ord) for v in varnames for ord in max_ord[1]:-1:0]
-			elseif ranking == :deriv_var
+			elseif ranking_dependent == :deriv_var
 				all_varnames = [form_derivative(v, ord) for ord in max_ord[1]:-1:0 for v in varnames]
+			else
+				throw(DomainError("Please use the Julia symbol :var_deriv or :deriv_var for ranking_dependent"))
 			end
 			if ordering != :lex
 				poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames,ordering=ordering)
@@ -86,12 +88,16 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 			end
 			return new(R, poly_ring, max_ord, varnames, derivation)
 		else
-			if ranking == :lex
+			if ranking_independent == :lex
 				L = rev_list_lex_monomials(max_ord)
-			elseif ranking == :degrevlex
+			elseif ranking_independent == :degrevlex
 				L = list_degrevlex_monomials(max_ord)
 			end
-			all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
+			if ranking_dependent == :var_deriv
+				all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
+			else
+				all_varnames = [form_partial_derivative(v, ord) for ord in L for v in varnames]
+			end
 			poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames)
 			derivation = [Dict() for j in 1:length(max_ord)]
 			for v in varnames
@@ -111,8 +117,8 @@ mutable struct DifferentialPolyRing <: DifferentialRing
     end
 end
 
-function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}; ranking::Symbol = :var_deriv, ordering::Symbol = :lex, max_ord::Array{Int64,1}=[20])
-	R = DifferentialPolyRing(R, varnames, ranking, ordering, max_ord)
+function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}; ranking_dependent::Symbol = :var_deriv, ranking_independent::Symbol, ordering::Symbol = :lex, max_ord::Array{Int64,1}=[20])
+	R = DifferentialPolyRing(R, varnames, ranking_dependent, ranking_independent, ordering, max_ord)
     return R, Tuple([DiffIndet(R,v) for v in varnames])
 end
 
@@ -246,8 +252,9 @@ function Base.:+(a::DiffIndet, b::DifferentialRingElem)
     check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) + b)
+	else
+		return parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) + b)
 	end
-	return parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) + b)
 end
 
 function Base.:+(a::DifferentialRingElem, b::DiffIndet)
