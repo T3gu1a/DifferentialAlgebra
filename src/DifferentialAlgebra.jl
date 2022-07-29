@@ -98,7 +98,11 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 			else
 				all_varnames = [form_partial_derivative(v, ord) for ord in L for v in varnames]
 			end
-			poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames)
+			if ordering != :lex
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames,ordering=ordering)
+			else
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames)
+			end
 			derivation = [Dict() for j in 1:length(max_ord)]
 			for v in varnames
 				for i in 1:length(max_ord)
@@ -265,6 +269,24 @@ end
 
 #--------------------------------------------------------------------------------------
 
+function leader_index(p::DiffPoly)
+	#Assuming that the terms (monomials) in p are sorted with respect to lex
+    return findfirst(x -> x!=0, leading_exponent_vector(p.algdata))
+end
+
+function leader(p::DiffPoly)
+    return gens(parent(p).poly_ring)[leader_index(p)]
+end
+
+function leader_index_degree(p::DiffPoly)
+	#Assuming that the terms (monomials) in p are sorted with respect to lex
+    v=leading_exponent_vector(p.algdata)
+	i= findfirst(x -> x!=0, v)
+	return i,v[i]
+end
+
+#--------------------------------------------------------------------------------
+
 function Base.:+(a::DifferentialRingElem, b::DifferentialRingElem)
     check_parent(a, b)
     return parent(a)(algdata(a) + algdata(b))
@@ -350,7 +372,7 @@ function Base.show(io::IO, p::DifferentialRingElem)
 end
 
 function Base.show(io::IO, p::DiffIndet)
-    show(io, p.varname)
+    print(io, p.varname)
 end
 
 #-----------------
