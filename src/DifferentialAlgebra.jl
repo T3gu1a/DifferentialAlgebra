@@ -117,9 +117,9 @@ mutable struct DifferentialPolyRing <: DifferentialRing
     end
 end
 
-function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}; ranking_dependent::Symbol = :var_deriv, ranking_independent::Symbol, ordering::Symbol = :lex, max_ord::Array{Int64,1}=[20])
+function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}; ranking_dependent::Symbol = :var_deriv, ranking_independent::Symbol = :lex, ordering::Symbol = :lex, max_ord::Array{Int64,1}=[20])
 	R = DifferentialPolyRing(R, varnames, ranking_dependent, ranking_independent, ordering, max_ord)
-    return R, Tuple([DiffIndet(R,v) for v in varnames])
+	return R, Tuple([DiffIndet(R,v) for v in varnames])
 end
 
 function AbstractAlgebra.gens(R::DifferentialPolyRing)
