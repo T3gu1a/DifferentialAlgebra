@@ -269,20 +269,113 @@ end
 
 #--------------------------------------------------------------------------------------
 
-function leader_index(p::DiffPoly)
+function lex_leader_index(p::DiffPoly)
 	#Assuming that the terms (monomials) in p are sorted with respect to lex
     return findfirst(x -> x!=0, leading_exponent_vector(p.algdata))
 end
 
-function leader(p::DiffPoly)
-    return gens(parent(p).poly_ring)[leader_index(p)]
+function lex_leader(p::DiffPoly)
+    return gens(parent(p).poly_ring)[lex_leader_index(p)]
 end
 
-function leader_index_degree(p::DiffPoly)
+function lex_leader_index_degree(p::DiffPoly)
 	#Assuming that the terms (monomials) in p are sorted with respect to lex
     v=leading_exponent_vector(p.algdata)
 	i= findfirst(x -> x!=0, v)
 	return i,v[i]
+end
+
+#--
+
+#------------ Independently of the chosen monomial ordering -----------------------
+
+#compute the leader as the maximum of the maximums of the variables in each term
+#with respect to the chosen ranking
+function leader(p::DiffPoly)
+    return  parent(p)(maximum(map(v->maximum(vars(v)),terms(p.algdata))))
+end
+
+#for internal use
+function lead_er(p::DiffPoly)
+    return  maximum(map(v->maximum(vars(v)),terms(p.algdata)))
+end
+
+#we have a very easy way to compute the separant :)
+#derivative is a command from the AbstractAlgebra package
+function separant(p::DiffPoly)
+	return parent(p)(derivative(p.algdata,lead_er(p)))
+end
+
+#for internal use
+function sep_arant(p::DiffPoly)
+	return derivative(p.algdata,lead_er(p))
+end
+
+function leader_degree_initial(p::DiffPoly)
+	ld = lead_er(p)
+	
+	#hasleader is a function that select terms having the leader
+	hasleader(t) = (ld in vars(t)) ? true : false
+	
+	#select all terms with the leader (collect is important here in order to use findall)
+	pdata=collect(terms(p.algdata))
+	term_with_ld = map(i->pdata[i],findall(hasleader, pdata))
+	
+	#index of the leader degree in the exponent vector
+	index_ld_deg=findfirst(x->x!=0,degrees(ld))
+	
+	#degrees of the leader for all terms having the leader
+	deg_term_with_ld=map(t->degrees(t)[index_ld_deg], term_with_ld)
+	
+	#we have the leader degree and the index of the term containing the initial
+	ld_deg, init_index = findmax(deg_term_with_ld) 
+	
+	#the initial is then computed by removing the leader from the term with index init_index
+	_, init = remove(term_with_ld[init_index],ld)
+	
+	#return the results
+	return ld_deg, parent(p)(init)
+end
+
+function diffreduction(p::DiffPoly, q::DiffPoly)
+    """
+    Performs a differential reduction of g with respect to f or vice verca
+    """
+    check_parent(p, q)
+	leadg = leader(p)
+	leadf = leader(q)
+    g = (leadg > leadf) ? p : q
+	f = (leadg < leadf) ? q : p
+    a, b = 0, 0
+
+	while leadg > leadf 
+		deg_g, init_g = leader_degree_initial(g)
+		g = separant(f)*g - init_g*leadg
+	end
+
+
+#to be updated
+    h = order(f, v)
+    ld = leader(f, v)
+    deg = degree(f, ld)
+    sep = separant(f, v)
+    init = initial(f, v)
+
+    while order(result, v) > h
+        H = order(result, v)
+        ld_res = leader(result, v)
+        D = degree(result, ld_res)
+        result = result * sep - initial(result, v) * ld_res^(D - 1) * d(f, H - h)
+        a += 1
+    end
+
+    while degree(result, ld) > deg
+        D = degree(result, ld)
+        result = result * init - initial(result, v) * ld^(D - deg) * f
+        b += 1
+    end
+
+    return (result, a, b)
 end
 
 #--------------------------------------------------------------------------------
