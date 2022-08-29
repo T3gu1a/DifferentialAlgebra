@@ -291,7 +291,8 @@ end
 
 #compute the leader as the maximum of the maximums of the variables in each term
 #with respect to the chosen ranking
-function leader(p::DiffPoly)
+function leader(P::Union{DiffPoly,DiffIndet})
+	p=P+0 #working with DiffIndet as DiffPoly
 	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
 	if V==[]
 		return 1
@@ -301,7 +302,8 @@ function leader(p::DiffPoly)
 end
 
 #for internal use
-function lead_er(p::DiffPoly)
+function lead_er(P::Union{DiffPoly,DiffIndet})
+	p=P+0
 	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
 	if V==[]
 		return 1
@@ -312,7 +314,8 @@ end
 
 #we have a very easy way to compute the separant :)
 #derivative is a command from the AbstractAlgebra package
-function separant(p::DiffPoly)
+function separant(P::Union{DiffPoly,DiffIndet})
+	p=P+0
 	return parent(p)(derivative(p.algdata,lead_er(p)))
 end
 
@@ -321,7 +324,8 @@ function sep_arant(p::DiffPoly)
 	return derivative(p.algdata,lead_er(p))
 end
 
-function leader_degree_initial(p::DiffPoly)
+function leader_degree_initial(P::Union{DiffPoly,DiffIndet})
+	p=P+0
 	ld = lead_er(p)
 	
 	#hasleader is a function that select terms having the leader
@@ -382,16 +386,19 @@ function leader_isgreater(l1::Union{DiffPoly,Integer},l2::Union{DiffPoly,Integer
 end
 
 #Alrogithm for one differential indeterminate
-function diffreduction(p::DiffPoly, q::DiffPoly)
+function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet})
     """
     Performs a differential reduction of g with respect to f or vice verca
 	when there is only one differential indeterminate
     """
     check_parent(p, q)
+	if length(parent(p).varnames)>1
+        throw(DomainError("More than one differential indeterminate. To be defined..."))
+    end
 	leadg = leader(p)
 	leadf = leader(q)
-    g = (leadg > leadf) ? p : q
-	f = (leadf < leadg) ? q : p
+    g = (leadg > leadf) ? p+0 : q+0
+	f = (leadf < leadg) ? q+0 : p+0
 	while leader_isgreater(leadg, leadf)
 		deg_g, init_g = leader_degree_initial(g)
 		dord = indet_order(leadg)-indet_order(leadf)
