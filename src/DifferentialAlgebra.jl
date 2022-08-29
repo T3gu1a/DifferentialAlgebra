@@ -292,12 +292,22 @@ end
 #compute the leader as the maximum of the maximums of the variables in each term
 #with respect to the chosen ranking
 function leader(p::DiffPoly)
-    return  parent(p)(maximum(map(v->maximum(vars(v)),terms(p.algdata))))
+	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
+	if V==[]
+		return 1
+	else
+		return  parent(p)(maximum(map(v->maximum(v),V)))
+	end
 end
 
 #for internal use
 function lead_er(p::DiffPoly)
-    return  maximum(map(v->maximum(vars(v)),terms(p.algdata)))
+	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
+	if V==[]
+		return 1
+	else
+		return  maximum(map(v->maximum(v),V))
+	end
 end
 
 #we have a very easy way to compute the separant :)
@@ -337,45 +347,58 @@ function leader_degree_initial(p::DiffPoly)
 	return ld_deg, parent(p)(init)
 end
 
+#extracting the order from an indeterminate
+function indet_order(v::DiffPoly)
+	v_str="$v"
+	ord=v_str[findfirst('(',v_str)+1:findfirst(')',v_str)-1]
+	if length(parent(v).derivation)>1
+		return parse.(Int64, split(chop(ord; head=1, tail=1), ','))
+	else
+		return parse(Int64, ord)
+	end
+end
+
+#funny: check_parent(x,x^1) is not true!!
+function Base.:^(a::Union{DiffPoly,DifferentialRingElem}, i::Integer)
+	return parent(a)(algdata(a)^i)
+end
+
+function Base.:^(a::DiffIndet, i::Integer)
+	if length(parent(a).derivation)>1
+		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring))^i)
+	else
+		return parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring))^i)
+	end
+end
+
+function leader_isgreater(l1::Union{DiffPoly,Integer},l2::Union{DiffPoly,Integer})
+	if typeof(l1)==DiffPoly && typeof(l2)==DiffPoly
+		return l1>l2
+	elseif typeof(l1)==DiffPoly
+		return true
+	else
+		return false
+	end
+end
+
+#Alrogithm for one differential indeterminate
 function diffreduction(p::DiffPoly, q::DiffPoly)
     """
     Performs a differential reduction of g with respect to f or vice verca
+	when there is only one differential indeterminate
     """
     check_parent(p, q)
 	leadg = leader(p)
 	leadf = leader(q)
     g = (leadg > leadf) ? p : q
-	f = (leadg < leadf) ? q : p
-    a, b = 0, 0
-
-	while leadg > leadf 
+	f = (leadf < leadg) ? q : p
+	while leader_isgreater(leadg, leadf)
 		deg_g, init_g = leader_degree_initial(g)
-		g = separant(f)*g - init_g*leadg
+		dord = indet_order(leadg)-indet_order(leadf)
+		g = separant(f)*g - init_g*(leadg^(deg_g-1))*d(f,dord)
+		leadg = leader(g)
 	end
-
-
-#to be updated
-    h = order(f, v)
-    ld = leader(f, v)
-    deg = degree(f, ld)
-    sep = separant(f, v)
-    init = initial(f, v)
-
-    while order(result, v) > h
-        H = order(result, v)
-        ld_res = leader(result, v)
-        D = degree(result, ld_res)
-        result = result * sep - initial(result, v) * ld_res^(D - 1) * d(f, H - h)
-        a += 1
-    end
-
-    while degree(result, ld) > deg
-        D = degree(result, ld)
-        result = result * init - initial(result, v) * ld^(D - deg) * f
-        b += 1
-    end
-
-    return (result, a, b)
+	return parent(p)(divrem(g.algdata,f.algdata)[2])
 end
 
 #--------------------------------------------------------------------------------
