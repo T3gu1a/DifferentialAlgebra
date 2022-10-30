@@ -1,4 +1,6 @@
+import Oscar
 using AbstractAlgebra
+
 
 abstract type DifferentialRing <: AbstractAlgebra.Ring end
 abstract type DifferentialField <: AbstractAlgebra.Field end

@@ -362,7 +362,7 @@ function indet_order(v::DiffPoly)
 	end
 end
 
-#funny: check_parent(x,x^1) is not true!!
+#funny: check_parent(x,x^1) is (was) not true!!
 function Base.:^(a::Union{DiffPoly,DifferentialRingElem}, i::Integer)
 	return parent(a)(algdata(a)^i)
 end
@@ -393,6 +393,7 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet
     """
     check_parent(p, q)
 	if length(parent(p).varnames)>1
+		#head reduction (to be implemented)
         throw(DomainError("More than one differential indeterminate. To be defined..."))
     end
 	leadg = leader(p)
@@ -575,6 +576,12 @@ function d(a::Union{Integer,Rational}, ord::Integer)
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
     return 0
+end
+#--------------------------------- extending the bound ---------
+
+function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
+	h = Oscar.hom(parent(p), R, gens(parent(p)))
+	return h(p)
 end
 
 #----------partial d -----------------------------------
