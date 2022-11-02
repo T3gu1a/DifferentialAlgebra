@@ -46,12 +46,12 @@ function rev_list_lex_monomials(b::Array{Int64, 1})
 end
 
 function degrevlex_isless(v1::Array{Int64, 1},v2::Array{Int64, 1})
-	if sum(v1)==sum(v2)
-		n1 = parse(Int64, join(v1))
-		n2 = parse(Int64, join(v2))
-		return (n1<n2 ? false : true)
+	s1 = sum(v1)
+	s2 = sum(v2)
+	if s1 == s2
+		return v1 < v2
 	else
-		return (sum(v1)<sum(v2) ? true : false)
+		return s1 < s2
 	end
 end
 
