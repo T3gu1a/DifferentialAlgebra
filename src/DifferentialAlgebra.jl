@@ -63,10 +63,13 @@ mutable struct DifferentialPolyRing <: DifferentialRing
     poly_ring::MPolyRing
     max_ord::Vector{Int64}
     varnames::Array{String, 1}
+    ranking_dependent::Symbol
+    ranking_independent::Symbol
+    ordering::Symbol
     derivation::Array{Dict{Any, Any},1}
 	
 	function DifferentialPolyRing(R::AbstractAlgebra.Ring, varnames::Array{String, 1}, ranking_dependent::Symbol, ranking_independent::Symbol, ordering::Symbol, max_ord::Vector{Int64})
-        if length(max_ord)==1
+		if length(max_ord)==1
 			if ranking_dependent == :var_deriv
 				all_varnames = [form_derivative(v, ord) for v in varnames for ord in max_ord[1]:-1:0]
 			elseif ranking_dependent == :deriv_var
@@ -75,7 +78,7 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 				throw(DomainError("Please use the Julia symbol :var_deriv or :deriv_var for ranking_dependent"))
 			end
 			if ordering != :lex
-				poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames,ordering=ordering)
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames,ordering=ordering)
 			else
 				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames)
 			end
@@ -86,7 +89,7 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 						str_to_var(form_derivative(v, ord + 1), poly_ring)
 				end
 			end
-			return new(R, poly_ring, max_ord, varnames, derivation)
+			return new(R, poly_ring, max_ord, varnames, ranking_dependent, ranking_independent, ordering, derivation)
 		else
 			if ranking_independent == :lex
 				L = rev_list_lex_monomials(max_ord)
@@ -99,7 +102,7 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 				all_varnames = [form_partial_derivative(v, ord) for ord in L for v in varnames]
 			end
 			if ordering != :lex
-				poly_ring, _ = AbstractAlgebra.PolynomialRing(R, all_varnames,ordering=ordering)
+				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames,ordering=ordering)
 			else
 				poly_ring, _ = AbstractAlgebra.PolynomialRing(R,all_varnames)
 			end
@@ -116,7 +119,7 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 					end
 				end
 			end
-			return new(R, poly_ring, max_ord, varnames, derivation)
+			return new(R, poly_ring, max_ord, varnames, ranking_dependent, ranking_independent, ordering, derivation)
 		end
     end
 end
@@ -280,7 +283,7 @@ end
 
 function lex_leader_index_degree(p::DiffPoly)
 	#Assuming that the terms (monomials) in p are sorted with respect to lex
-    v=leading_exponent_vector(p.algdata)
+	v=leading_exponent_vector(p.algdata)
 	i= findfirst(x -> x!=0, v)
 	return i,v[i]
 end
@@ -398,7 +401,7 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet
     end
 	leadg = leader(p)
 	leadf = leader(q)
-    g = (leadg > leadf) ? p+0 : q+0
+	g = (leadg > leadf) ? p+0 : q+0
 	f = (leadf < leadg) ? q+0 : p+0
 	while leader_isgreater(leadg, leadf)
 		deg_g, init_g = leader_degree_initial(g)
@@ -414,6 +417,26 @@ end
 function Base.:+(a::DifferentialRingElem, b::DifferentialRingElem)
     check_parent(a, b)
     return parent(a)(algdata(a) + algdata(b))
+end
+
+function Base.:+(a::Union{DiffPoly,DiffIndet,DifferentialRingElem}, b::Union{DiffPoly,DiffIndet,DifferentialRingElem})
+	try
+		return parent(a)(algdata(a) + algdata(b))
+	catch
+		if length(parent(a).varnames)>1
+			throw(DomainError("multivariate not implemented"))
+		else
+			if length(parent(a).max_ord)==1 && length(parent(b).max_ord)==1
+				if parent(a).max_ord[1]>parent(b).max_ord[1]
+					return a+embedDiffPoly(b,parent(a))
+				else
+					return embedDiffPoly(a,parent(b))+b
+				end
+			else
+				throw(DomainError("partial case not implemented"))
+			end
+		end
+	end
 end
 
 function Base.:+(a::DifferentialRingElem, b)
@@ -525,7 +548,7 @@ function d_aux(p::MPolyElem, der::Dict{Any, Any})
     result = zero(parent(p))
     for v in vars(p)
         if !(v in keys(der))
-            throw(DomainError("No derivative defined for $v. Most likely you have exceeded the maximal order."))
+		throw(DomainError("No derivative defined for $v. Most likely you have exceeded the maximal order."))	
         end
         result += der[v] * derivative(p, v)
     end
@@ -537,7 +560,13 @@ function d(a::DiffPoly)
 		#if in the partial case then ERROR
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
-    return DiffPoly(parent(a), d_aux(algdata(a), parent(a).derivation[1]))
+	try
+		return DiffPoly(parent(a), d_aux(algdata(a), parent(a).derivation[1]))
+	catch
+		R1=parent(a)
+		R2,_= DifferentialPolynomialRing(R1.base_ring,R1.varnames,ranking_dependent=R1.ranking_dependent,ranking_independent=R1.ranking_independent,ordering=R1.ordering,max_ord=[R1.max_ord[1]+1])
+		return d(embedDiffPoly(a,R2))
+	end
 end
 
 function d(a::DiffIndet)
@@ -564,10 +593,10 @@ function d(a::DifferentialRingElem, ord::Integer)
 		#if in the partial case then ERROR
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
-    if ord == 0
-        return a
-    end
-    return d(d(a), ord - 1)
+	if ord == 0
+		return a
+	end
+	return d(d(a), ord - 1)
 end
 
 function d(a::Union{Integer,Rational}, ord::Integer)
@@ -577,11 +606,26 @@ function d(a::Union{Integer,Rational}, ord::Integer)
 	end
     return 0
 end
-#--------------------------------- extending the bound ---------
+
+
+
+#--------------------------------- embeding map for polynomials ---------
+
+#function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
+#	h = Oscar.hom(parent(p), R, gens(parent(p)))
+#	return h(p)
+#end
 
 function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
-	h = Oscar.hom(parent(p), R, gens(parent(p)))
-	return h(p)
+	R0=parent(p)
+	indet_R = R.varnames
+	if parent(p).ranking_dependent == :var_deriv
+		images = [str_to_var(form_derivative(v, ord),R.poly_ring) for v in indet_R for ord in R0.max_ord[1]:-1:0]
+	else
+		images = [str_to_var(form_derivative(v, ord),R.poly_ring) for ord in R0.max_ord[1]:-1:0 for v in indet_R]
+	end
+	h = Oscar.hom(R0.poly_ring, R.poly_ring, images)
+	return DiffPoly(R,h(algdata(p)))
 end
 
 #----------partial d -----------------------------------
