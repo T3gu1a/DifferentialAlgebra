@@ -137,14 +137,14 @@ end
 #-----
 
 mutable struct DiffPoly <: DifferentialRingElem
-    parent::DifferentialPolyRing
-    algdata::AbstractAlgebra.MPolyElem
+	parent::DifferentialPolyRing
+	algdata::AbstractAlgebra.MPolyElem
 
-    function DiffPoly(R::DifferentialPolyRing, alg_poly::AbstractAlgebra.MPolyElem)
-        #return new(R, parent_ring_change(alg_poly, R.poly_ring))
+	function DiffPoly(R::DifferentialPolyRing, alg_poly::AbstractAlgebra.MPolyElem)
+	#return new(R, parent_ring_change(alg_poly, R.poly_ring))
 		return new(R, alg_poly)
-    end
-	
+	end
+
 	#function DiffPoly(a::DiffIndet)
 	#	return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring))
 	#end
@@ -152,12 +152,12 @@ end
 
 #copy
 mutable struct DiffIndet <: DifferentialRingElem
-    parent::DifferentialPolyRing
+	parent::DifferentialPolyRing
 	varname::String
 
-    function DiffIndet(R::DifferentialPolyRing, var_name::String)
-        return new(R, var_name)
-    end
+	function DiffIndet(R::DifferentialPolyRing, var_name::String)
+		return new(R, var_name)
+	end
 end
 
 function Base.parent(a::DiffPoly)
@@ -183,15 +183,20 @@ AbstractAlgebra.parent_type(::Type{DiffPoly}) = DifferentialPolyRing
 
 #equality
 
-#the comparison returns a boolean integer (1 or 0)
-#which the following code converts to true or false
-function Binary_to_Bool(a::DiffPoly)
-	return convert(Bool,parse(Int64,"$(a)"))
+function Base.:(==)(a::DifferentialRingElem, b::DifferentialRingElem)
+	check_parent(a, b)
+	return algdata(a) == algdata(b)
 end
 
-function Base.:(==)(a::DifferentialRingElem, b::DifferentialRingElem)
-    check_parent(a, b)
-	return Binary_to_Bool(parent(a)(algdata(a) == algdata(b)))
+function Base.:(==)(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		return algdata(a) == algdata(embedDiffPoly(b,parent(a)))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		return algdata(embedDiffPoly(a,parent(b))) == algdata(b)
+	else
+		return algdata(a) == algdata(b)
+	end 
+	
 end
 
 function Base.:(==)(a::DiffIndet, b::DifferentialRingElem)
@@ -203,12 +208,12 @@ function Base.:(==)(a::DifferentialRingElem, b::DiffIndet)
 end
 
 function Base.:(==)(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) == DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) == DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))
 	else
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) == DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) == DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))
 	end
 end
 
@@ -216,57 +221,79 @@ end
 #lessorgreather
 
 function Base.:<(a::DifferentialRingElem, b::DifferentialRingElem)
-    check_parent(a, b)
-	return Binary_to_Bool(parent(a)(algdata(a) < algdata(b)))
+	check_parent(a, b)
+	return algdata(a) < algdata(b)
+end
+
+function Base.:<(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		return algdata(a) < algdata(embedDiffPoly(b,parent(a)))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		return algdata(embedDiffPoly(a,parent(b))) < algdata(b)
+	else
+		return algdata(a) < algdata(b)
+	end 
+	
 end
 
 function Base.:<(a::DiffIndet, b::DifferentialRingElem)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) < b))
+		return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) < b
 	else
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < b))
+		return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < b
 	end
 end
 
 function Base.:>(a::DiffIndet, b::DifferentialRingElem)
-    check_parent(a, b)
+	check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) > b))
+		return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) > b
 	else
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > b))
+		return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > b
 	end
 end
 
+function Base.:>(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		return algdata(a) > algdata(embedDiffPoly(b,parent(a)))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		return algdata(embedDiffPoly(a,parent(b))) > algdata(b)
+	else
+		return algdata(a) > algdata(b)
+	end 
+	
+end
+
 function Base.:<(a::DifferentialRingElem, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(a < DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))))
+		return a < DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))
 	else
-		return Binary_to_Bool(parent(a)(a < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+		return a < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))
 	end
 end
 
 function Base.:<(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))
 	else
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))
 	end
 end
 
 function Base.:>(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	check_parent(a, b)
 	if length(parent(a).derivation)>1
 		Z=zeros(Int64,length(parent(a).derivation))
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) > DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, Z), parent(a).poly_ring)) > DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, Z), parent(a).poly_ring))
 	else
-		return Binary_to_Bool(parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))))
+		return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) > DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring))
 	end
 end
 
@@ -274,11 +301,11 @@ end
 
 function lex_leader_index(p::DiffPoly)
 	#Assuming that the terms (monomials) in p are sorted with respect to lex
-    return findfirst(x -> x!=0, leading_exponent_vector(p.algdata))
+	return findfirst(x -> x!=0, leading_exponent_vector(p.algdata))
 end
 
 function lex_leader(p::DiffPoly)
-    return gens(parent(p).poly_ring)[lex_leader_index(p)]
+	return gens(parent(p).poly_ring)[lex_leader_index(p)]
 end
 
 function lex_leader_index_degree(p::DiffPoly)
@@ -394,22 +421,28 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet
     Performs a differential reduction of g with respect to f or vice verca
 	when there is only one differential indeterminate
     """
-    check_parent(p, q)
+	#check_parent(p, q)
 	if length(parent(p).varnames)>1
 		#head reduction (to be implemented)
-        throw(DomainError("More than one differential indeterminate. To be defined..."))
-    end
+		throw(DomainError("More than one differential indeterminate. To be defined..."))
+	end
 	leadg = leader(p)
 	leadf = leader(q)
 	g = (leadg > leadf) ? p+0 : q+0
 	f = (leadf < leadg) ? q+0 : p+0
+	leadg = leader(g)
+	leadf = leader(f)
 	while leader_isgreater(leadg, leadf)
 		deg_g, init_g = leader_degree_initial(g)
 		dord = indet_order(leadg)-indet_order(leadf)
 		g = separant(f)*g - init_g*(leadg^(deg_g-1))*d(f,dord)
 		leadg = leader(g)
 	end
-	return parent(p)(divrem(g.algdata,f.algdata)[2])
+	try
+		return parent(p)(divrem(g.algdata,f.algdata)[2])
+	catch
+		return parent(q)(divrem(g.algdata,f.algdata)[2])
+	end
 end
 
 #--------------------------------------------------------------------------------
@@ -419,36 +452,29 @@ function Base.:+(a::DifferentialRingElem, b::DifferentialRingElem)
     return parent(a)(algdata(a) + algdata(b))
 end
 
-function Base.:+(a::Union{DiffPoly,DiffIndet,DifferentialRingElem}, b::Union{DiffPoly,DiffIndet,DifferentialRingElem})
-	try
-		return parent(a)(algdata(a) + algdata(b))
-	catch
-		if length(parent(a).varnames)>1
-			throw(DomainError("multivariate not implemented"))
-		else
-			if length(parent(a).max_ord)==1 && length(parent(b).max_ord)==1
-				if parent(a).max_ord[1]>parent(b).max_ord[1]
-					return a+embedDiffPoly(b,parent(a))
-				else
-					return embedDiffPoly(a,parent(b))+b
-				end
-			else
-				throw(DomainError("partial case not implemented"))
-			end
-		end
-	end
+function Base.:+(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		print("here 1\n")
+		return a+embedDiffPoly(b,parent(a))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		print("here 2\n")
+		return embedDiffPoly(a,parent(b))+b
+	else
+		return parent(a)(algdata(a)+algdata(b))
+	end 
 end
 
 function Base.:+(a::DifferentialRingElem, b)
-    return parent(a)(algdata(a) + b)
+	return parent(a)(algdata(a) + b)
 end
 
 function Base.:+(a, b::DifferentialRingElem)
-    return parent(b)(algdata(b) + a)
+	return parent(b)(algdata(b) + a)
 end
 
+
 function Base.:+(a::DiffIndet, b::DifferentialRingElem)
-    check_parent(a, b)
+	#check_parent(a, b)  --> arises an error
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) + b)
 	else
@@ -457,7 +483,7 @@ function Base.:+(a::DiffIndet, b::DifferentialRingElem)
 end
 
 function Base.:+(a::DifferentialRingElem, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)  --> arises an error
 	if length(parent(a).derivation)>1
 		return parent(a)(a + DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
@@ -465,7 +491,7 @@ function Base.:+(a::DifferentialRingElem, b::DiffIndet)
 end
 
 function Base.:+(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+        #check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) + DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
@@ -574,7 +600,7 @@ function d(a::DiffIndet)
 		#if in the partial case then ERROR
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
-    return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 1), parent(a).poly_ring))
+	return DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 1), parent(a).poly_ring))
 end
 
 #-
@@ -583,7 +609,7 @@ function d(a::Union{AbstractFloat, Integer, Rational})
 		#if in the partial case then ERROR
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
-    return 0
+	return 0
 end
 #---
 
@@ -605,27 +631,6 @@ function d(a::Union{Integer,Rational}, ord::Integer)
 		throw(DomainError("Missing partial orders for the derivation"))
 	end
     return 0
-end
-
-
-
-#--------------------------------- embeding map for polynomials ---------
-
-#function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
-#	h = Oscar.hom(parent(p), R, gens(parent(p)))
-#	return h(p)
-#end
-
-function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
-	R0=parent(p)
-	indet_R = R.varnames
-	if parent(p).ranking_dependent == :var_deriv
-		images = [str_to_var(form_derivative(v, ord),R.poly_ring) for v in indet_R for ord in R0.max_ord[1]:-1:0]
-	else
-		images = [str_to_var(form_derivative(v, ord),R.poly_ring) for ord in R0.max_ord[1]:-1:0 for v in indet_R]
-	end
-	h = Oscar.hom(R0.poly_ring, R.poly_ring, images)
-	return DiffPoly(R,h(algdata(p)))
 end
 
 #----------partial d -----------------------------------
@@ -650,6 +655,41 @@ function d(a::Union{AbstractFloat, Integer, Rational},r::Array{Int64, 1})
 end
 
 #------------------------------------------------------------------------------
+
+#--------------------------------- embeding map for polynomials ---------
+
+#function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
+#	h = Oscar.hom(parent(p), R, gens(parent(p)))
+#	return h(p)
+#end
+
+function embedDiffPoly(p::DiffPoly, R::DifferentialPolyRing)
+	R0=parent(p)
+	indet_R = R.varnames
+	if length(R.max_ord)==1
+		if parent(p).ranking_dependent == :var_deriv
+			images = [str_to_var(form_derivative(v, ord),R.poly_ring) for v in indet_R for ord in R0.max_ord[1]:-1:0]
+		else
+			images = [str_to_var(form_derivative(v, ord),R.poly_ring) for ord in R0.max_ord[1]:-1:0 for v in indet_R]
+		end
+	else
+		#to be adapted...
+		if ranking_independent == :lex
+			L = rev_list_lex_monomials(max_ord)
+		elseif ranking_independent == :degrevlex
+			L = list_degrevlex_monomials(max_ord)
+		end
+		if ranking_dependent == :var_deriv
+			all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
+		else
+			all_varnames = [form_partial_derivative(v, ord) for ord in L for v in varnames]
+		end
+	end
+	h = Oscar.hom(R0.poly_ring, R.poly_ring, images)
+	return DiffPoly(R,h(algdata(p)))
+end
+
+#------------------------------
 
 function Base.hash(a::DifferentialRingElem)
     return hash(algdata(a))
@@ -676,8 +716,18 @@ function Base.:*(a::DifferentialRingElem, b::DifferentialRingElem)
     return parent(a)(algdata(a) * algdata(b))
 end
 
+function Base.:*(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		return a*embedDiffPoly(b,parent(a))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		return embedDiffPoly(a,parent(b))*b
+	else
+		return parent(a)(algdata(a)*algdata(b))
+	end 
+end
+
 function Base.:*(a::DiffIndet, b::DifferentialRingElem)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) * algdata(b))
 	end
@@ -685,15 +735,17 @@ function Base.:*(a::DiffIndet, b::DifferentialRingElem)
 end
 
 function Base.:*(a::DifferentialRingElem, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(algdata(a) * DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
     return parent(a)(algdata(a) * DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring)))
 end
 
+
+
 function Base.:*(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) * DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
@@ -747,6 +799,16 @@ function Base.:-(a::DifferentialRingElem, b::DifferentialRingElem)
     return parent(a)(algdata(a) - algdata(b))
 end
 
+function Base.:-(a::DiffPoly, b::DiffPoly)
+	if nvars(parent(a).poly_ring)>nvars(parent(b).poly_ring)
+		return a-embedDiffPoly(b,parent(a))
+	elseif nvars(parent(a).poly_ring)<nvars(parent(b).poly_ring)
+		return embedDiffPoly(a,parent(b))-b
+	else
+		return parent(a)(algdata(a)-algdata(b))
+	end 
+end
+
 function Base.:-(a::DifferentialRingElem, b)
     return parent(a)(algdata(a) - b)
 end
@@ -778,7 +840,7 @@ function Base.:-(a::Union{RingElem, AbstractFloat, Integer, Rational}, b::DiffIn
 end
 
 function Base.:-(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) - DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
@@ -786,7 +848,7 @@ function Base.:-(a::DiffIndet, b::DiffIndet)
 end
 
 function Base.:-(a::DiffIndet, b::DifferentialRingElem)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(DiffPoly(parent(a), str_to_var(form_partial_derivative(a.varname, zeros(Int64,length(parent(a).derivation))), parent(a).poly_ring)) - b)
 	end
@@ -794,7 +856,7 @@ function Base.:-(a::DiffIndet, b::DifferentialRingElem)
 end
 
 function Base.:-(a::DifferentialRingElem, b::DiffIndet)
-    check_parent(a, b)
+	#check_parent(a, b)
 	if length(parent(a).derivation)>1
 		return parent(a)(a - DiffPoly(parent(a), str_to_var(form_partial_derivative(b.varname, zeros(Int64,length(parent(b).derivation))), parent(a).poly_ring)))
 	end
@@ -832,7 +894,7 @@ end
 #---------------------------------------------------------------------------------------
 
 function Base.isless(a::DiffIndet, b::DiffIndet)
-    check_parent(a, b)
+	check_parent(a, b)
 	return parent(a)(DiffPoly(parent(a), str_to_var(form_derivative(a.varname, 0), parent(a).poly_ring)) < DiffPoly(parent(a), str_to_var(form_derivative(b.varname, 0), parent(a).poly_ring)))
 end
 
