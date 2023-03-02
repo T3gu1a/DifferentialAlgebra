@@ -29,3 +29,9 @@ end
 function Base.:>(a::Union{RingElem, AbstractFloat, Integer, Rational}, b::DifferentialRingElem)
     return false
 end
+
+#the comparison returns a boolean integer (1 or 0)
+#which the following code converts to true or false
+function Binary_to_Bool(a::DiffPoly)
+	return convert(Bool,parse(Int64,"$(a)"))
+end
