@@ -58,6 +58,83 @@ end
 
 #------------------------------------------------------------------------------
 
+# deglex
+
+function list_deglex_monomials_deg(n::Integer, d::Int64)
+        if n==1
+                return [[d]]
+        else
+                return [append!([i],m) for i in 0:d for m in list_deglex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function rev_list_deglex_monomials_deg(n::Integer, d::Int64)
+        if n==1
+                return [[d]]
+        else
+                return [append!([i],m) for i in d:-1:0 for m in rev_list_deglex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function list_deglex_monomials(n::Integer, b::Int64)
+        if n==1
+                return [[j] for j in 0:b]
+        else
+                return [append!([i],m) for d in 0:b for i in 0:d for m in list_deglex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function rev_list_deglex_monomials(n::Integer, b::Int64)
+        if n==1
+                return [[j] for j in b:-1:0]
+        else
+                return [append!([i],m) for d in b:-1:0 for i in d:-1:0 for m in rev_list_deglex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+# degrevlex
+
+function list_degrevlex_monomials_deg(n::Integer, d::Int64)
+        if n==1
+                return [[d]]
+        else
+                return [prepend!([i],m) for i in d:-1:0 for m in list_degrevlex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function rev_list_degrevlex_monomials_deg(n::Integer, d::Int64)
+        if n==1
+                return [[d]]
+        else
+                return [prepend!([i],m) for i in 0:d for m in rev_list_degrevlex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function list_degrevlex_monomials(n::Integer, b::Int64)
+        if n==1
+                return [[j] for j in 0:b]
+        else
+                return [prepend!([i],m) for d in 0:b for i in d:-1:0 for m in list_degrevlex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+function rev_list_degrevlex_monomials(n::Integer, b::Int64)
+        if n==1
+                return [[j] for j in b:-1:0]
+        else
+                return [prepend!([i],m) for d in b:-1:0 for i in 0:d for m in rev_list_degrevlex_monomials_deg(n-1, d-i)]
+        end
+end
+
+#------------------------------------------------------------------------------
+
 mutable struct DifferentialPolyRing <: DifferentialRing
     base_ring::AbstractAlgebra.Ring
     poly_ring::MPolyRing
