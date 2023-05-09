@@ -60,6 +60,9 @@ end
 
 # deglex
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in ascending order with respect to deglex
 function list_deglex_monomials_deg(n::Integer, d::Int64)
         if n==1
                 return [[d]]
@@ -69,6 +72,9 @@ function list_deglex_monomials_deg(n::Integer, d::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in descending order with respect to deglex
 function rev_list_deglex_monomials_deg(n::Integer, d::Int64)
         if n==1
                 return [[d]]
@@ -78,6 +84,10 @@ function rev_list_deglex_monomials_deg(n::Integer, d::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in ascending order with
+# respect to deglex
 function list_deglex_monomials(n::Integer, b::Int64)
         if n==1
                 return [[j] for j in 0:b]
@@ -87,6 +97,10 @@ function list_deglex_monomials(n::Integer, b::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in descending order with
+# respect to deglex
 function rev_list_deglex_monomials(n::Integer, b::Int64)
         if n==1
                 return [[j] for j in b:-1:0]
@@ -96,8 +110,75 @@ function rev_list_deglex_monomials(n::Integer, b::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in ascending order with respect to deglex
+function list_deglex_monomials_deg(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                if d>=0 && d<=b[1]
+                        return [[d]]
+                else
+                        return []
+                end
+        else
+                return [append!([i],m) for i in 0:b[1] for m in list_deglex_monomials_deg(d-i, b[2:length(b)])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in descending order with respect to deglex
+function rev_list_deglex_monomials_deg(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                if d>=0 && d<=b[1]
+                        return [[d]]
+                else
+                        return []
+                end
+        else
+                return [append!([i],m) for i in b[1]:-1:0 for m in rev_list_deglex_monomials_deg(d-i, b[2:length(b)])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in ascending order with respect to deglex
+function list_deglex_monomials(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                return [[j] for j in 0:min(d, b[1])]
+        else
+                return [append!([i],m) for j in 0:d for i in 0:b[1] for m in list_deglex_monomials_deg(j-i, b[2:length(b)])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in descending order with respect to deglex
+function rev_list_deglex_monomials(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                return [[j] for j in min(d, b[1]):-1:0]
+        else
+                return [append!([i],m) for j in d:-1:0 for i in b[1]:-1:0 for m in rev_list_deglex_monomials_deg(j-i, b[2:length(b)])]
+        end
+end
+
+
 # degrevlex
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in ascending order with respect to degrevlex
 function list_degrevlex_monomials_deg(n::Integer, d::Int64)
         if n==1
                 return [[d]]
@@ -107,6 +188,9 @@ function list_degrevlex_monomials_deg(n::Integer, d::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in descending order with respect to degrevlex
 function rev_list_degrevlex_monomials_deg(n::Integer, d::Int64)
         if n==1
                 return [[d]]
@@ -116,6 +200,10 @@ function rev_list_degrevlex_monomials_deg(n::Integer, d::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in ascending order with
+# respect to degrevlex
 function list_degrevlex_monomials(n::Integer, b::Int64)
         if n==1
                 return [[j] for j in 0:b]
@@ -125,6 +213,10 @@ function list_degrevlex_monomials(n::Integer, b::Int64)
 end
 
 
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in descending order with
+# respect to degrevlex
 function rev_list_degrevlex_monomials(n::Integer, b::Int64)
         if n==1
                 return [[j] for j in b:-1:0]
@@ -132,6 +224,71 @@ function rev_list_degrevlex_monomials(n::Integer, b::Int64)
                 return [prepend!([i],m) for d in b:-1:0 for i in 0:d for m in rev_list_degrevlex_monomials_deg(n-1, d-i)]
         end
 end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in ascending order with respect to degrevlex
+function list_degrevlex_monomials_deg(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                if d>=0 && d<=b[1]
+                        return [[d]]
+                else
+                        return []
+                end
+        else
+                return [prepend!([i],m) for i in b[length(b)]:-1:0 for m in list_degrevlex_monomials_deg(d-i, b[1:length(b)-1])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in descending order with respect to degrevlex
+function rev_list_degrevlex_monomials_deg(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                if d>=0 && d<=b[1]
+                        return [[d]]
+                else
+                        return []
+                end
+        else
+                return [prepend!([i],m) for i in 0:b[length(b)] for m in rev_list_degrevlex_monomials_deg(d-i, b[1:length(b)-1])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in ascending order with respect to degrevlex
+function list_degrevlex_monomials(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                return [[j] for j in 0:min(d, b[1])]
+        else
+                return [prepend!([i],m) for j in 0:d for i in b[length(b)]:-1:0 for m in list_degrevlex_monomials_deg(j-i, b[1:length(b)-1])]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to d
+# in length(b) variables,
+# with j-th index bounded from above by b[j] for all j,
+# arranged in descending order with respect to degrevlex
+function rev_list_degrevlex_monomials(d::Int64, b::Array{Int64, 1})
+        if length(b)==1
+                return [[j] for j in min(d, b[1]):-1:0]
+        else
+                return [prepend!([i],m) for j in d:-1:0 for i in 0:b[length(b)] for m in rev_list_degrevlex_monomials_deg(j-i, b[1:length(b)-1])]
+        end
+end
+
 
 #------------------------------------------------------------------------------
 
