@@ -331,7 +331,11 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 				if ranking_independent == :lex
 					L = rev_list_lex_monomials(max_ord)
 				elseif ranking_independent == :degrevlex
-					L = list_degrevlex_monomials(max_ord)
+					L = rev_list_degrevlex_monomials(sum(max_ord),max_ord)
+				elseif ranking_independent == :deglex
+					L = rev_list_deglex_monomials(sum(max_ord),max_ord)
+				else
+					throw(DomainError("Wrong ranking_independent. Please use :lex, :deglex, or :degrevlex"))
 				end
 				if ranking_dependent == :var_deriv
 					all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
@@ -366,6 +370,8 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 				L = list_deglex_monomials(number_derivations,max_ord)
 			elseif ranking_independent == :degrevlex
 				L = list_degrevlex_monomials(number_derivations,max_ord)
+			else
+				throw(DomainError("Wrong ranking_independent. Please use :lex, :deglex, or :degrevlex"))
 			end
 			if ranking_dependent == :var_deriv
 				all_varnames = [form_partial_derivative(v, ord) for v in varnames for ord in L]
@@ -888,6 +894,8 @@ function d(a::DifferentialRingElem, ord::Integer)
 	end
 	if ord == 0
 		return a
+	elseif ord == 1
+		return d(a)
 	end
 	return d(d(a), ord - 1)
 end
@@ -914,6 +922,7 @@ function d(a::DiffPoly,r::Array{Int64, 1})
 	catch
 		R1=parent(a)
 		if typeof(R1.max_ord) == Vector{Int64}
+			#dord = map(-,r,R1.max_ord)
 			R2,_= DifferentialPolynomialRing(R1.base_ring,R1.varnames,ranking_dependent=R1.ranking_dependent,ranking_independent=R1.ranking_independent,ordering=R1.ordering,max_ord=map(x->x+1,R1.max_ord))
 		else
 			R2,_= DifferentialPolynomialRing(R1.base_ring,R1.varnames,ranking_dependent=R1.ranking_dependent,ranking_independent=R1.ranking_independent,ordering=R1.ordering,max_ord=R1.max_ord+1,number_derivations=R1.number_derivations)
