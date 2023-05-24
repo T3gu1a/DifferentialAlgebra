@@ -416,7 +416,6 @@ mutable struct DifferentialPolyRing <: DifferentialRing
 			end
 		else
 			if ranking_independent == :lex
-				#rev_list_lex_monomials(n,m) not yet implemented
 				L = rev_list_lex_monomials(number_derivations,max_ord)
 			elseif ranking_independent == :deglex
 				L = list_deglex_monomials(number_derivations,max_ord)
