@@ -290,6 +290,58 @@ function rev_list_degrevlex_monomials(d::Int64, b::Array{Int64, 1})
 end
 
 
+# lex
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in ascending order with respect to lex
+function list_lex_monomials_deg(n::Integer, d::Int64)
+        if n==1
+                return [[d]]
+        else
+                return [append!([i],m) for i in 0:d for m in list_lex_monomials_deg(n-1, d-i)]
+        end
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree d in n variables
+# arranged in descending order with respect to lex
+function rev_list_lex_monomials_deg(n::Integer, d::Int64)
+        if n==1 
+                return [[d]]
+        else    
+                return [append!([i],m) for i in d:-1:0 for m in rev_list_lex_monomials_deg(n-1, d-i)]
+        end
+end             
+        
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in ascending order with
+# respect to lex
+function list_lex_monomials(n::Integer, b::Int64)
+        if n==1 
+                return [[j] for j in 0:b]
+        else    
+                return [append!([i],m) for i in 0:b for m in list_lex_monomials(n-1, b-i)]
+        end     
+end
+
+
+# return the list of multi-indices corresponding to
+# the list of monomials of total degree from 0 to b
+# in n variables, arranged in descending order with
+# respect to lex
+function rev_list_lex_monomials(n::Integer, b::Int64)
+        if n==1
+                return [[j] for j in b:-1:0]
+        else
+                return [append!([i],m) for i in b:-1:0 for m in rev_list_lex_monomials(n-1, b-i)]
+        end
+end
+
+
 #------------------------------------------------------------------------------
 
 mutable struct DifferentialPolyRing <: DifferentialRing
