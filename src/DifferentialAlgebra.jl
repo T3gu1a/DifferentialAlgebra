@@ -653,7 +653,7 @@ function leader(P::Union{DiffPoly,DiffIndet})
 	p=P+0 #working with DiffIndet as DiffPoly
 	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
 	if V==[]
-		return 1
+		return Base.one(parent(p))
 	else
 		return  parent(p)(maximum(map(v->maximum(v),V)))
 	end
@@ -664,7 +664,7 @@ function lead_er(P::Union{DiffPoly,DiffIndet})
 	p=P+0
 	V = filter!(v->v!=[],map(vars,terms(p.algdata)))
 	if V==[]
-		return 1
+		return Base.one(parent(p)).algdata
 	else
 		return  maximum(map(v->maximum(v),V))
 	end
@@ -686,7 +686,7 @@ function leader_degree_initial(P::Union{DiffPoly,DiffIndet})
 	p=P+0
 	ld = lead_er(p)
 	
-	#hasleader is a function that select terms having the leader
+	#hasleader is a function that selects terms having the leader
 	hasleader(t) = (ld in vars(t)) ? true : false
 	
 	#select all terms with the leader (collect is important here in order to use findall)
@@ -711,6 +711,9 @@ end
 
 #extracting the order from an indeterminate
 function indet_order(v::DiffPoly)
+	if v == Base.one(parent(v))
+		return -ones(Int64,length(parent(v).derivation))
+	end
 	v_str="$v"
 	ord=v_str[findfirst('(',v_str)+1:findfirst(')',v_str)-1]
 	if length(parent(v).derivation)>1
@@ -719,6 +722,7 @@ function indet_order(v::DiffPoly)
 		return parse(Int64, ord)
 	end
 end
+
 
 #funny: check_parent(x,x^1) is (was) not true!!
 function Base.:^(a::Union{DiffPoly,DifferentialRingElem}, i::Integer)
@@ -733,7 +737,7 @@ function Base.:^(a::DiffIndet, i::Integer)
 	end
 end
 
-function leader_isgreater(l1::Union{DiffPoly,Integer},l2::Union{DiffPoly,Integer})
+function leader_isgreater(l1::Union{DiffPoly,Integer,Rational},l2::Union{DiffPoly,Integer,Rational})
 	if typeof(l1)==DiffPoly && typeof(l2)==DiffPoly
 		return l1>l2
 	elseif typeof(l1)==DiffPoly
@@ -746,31 +750,29 @@ end
 #Alrogithm for one differential indeterminate
 function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet})
     """
-    Performs a differential reduction of g with respect to f or vice verca
-	when there is only one differential indeterminate
+    Performs a differential reduction of p with respect to q
     """
 	#check_parent(p, q)
 	if length(parent(p).varnames)>1
 		#head reduction (to be implemented)
 		throw(DomainError("More than one differential indeterminate. To be defined..."))
 	end
+	# case distinctions:
+	# constants
+	# reduction modulo several differential polynomials: selection (Daniel's book) and reduction
 	leadg = leader(p)
 	leadf = leader(q)
-	g = (leadg > leadf) ? p+0 : q+0
-	f = (leadf < leadg) ? q+0 : p+0
-	leadg = leader(g)
-	leadf = leader(f)
-	while leader_isgreater(leadg, leadf)
+	g = p+0
+	f = q+0
+	dord = indet_order(leadg)-indet_order(leadf)
+	#if min(dord) is negative then no differential reduction is possible: relevant for the partial case only
+	while minimum(dord)>-1 && leader_isgreater(leadg, leadf)
 		deg_g, init_g = leader_degree_initial(g)
-		dord = indet_order(leadg)-indet_order(leadf)
 		g = separant(f)*g - init_g*(leadg^(deg_g-1))*d(f,dord)
 		leadg = leader(g)
+		dord = indet_order(leadg)-indet_order(leadf)
 	end
-	try
-		return parent(p)(divrem(g.algdata,f.algdata)[2])
-	catch
-		return parent(q)(divrem(g.algdata,f.algdata)[2])
-	end
+	return parent(p)(divrem(g.algdata,f.algdata)[2])
 end
 
 #--------------------------------------------------------------------------------
