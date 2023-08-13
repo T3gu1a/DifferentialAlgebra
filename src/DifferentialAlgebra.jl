@@ -689,7 +689,7 @@ function leader_degree_initial(P::Union{DiffPoly,DiffIndet})
 	#hasleader is a function that selects terms having the leader
 	hasleader(t) = (ld in vars(t)) ? true : false
 	
-	#select all terms with the leader (collect is important here in order to use findall)
+	#select all terms with the leader (collect is important here for the use of findall)
 	pdata=collect(terms(p.algdata))
 	term_with_ld = map(i->pdata[i],findall(hasleader, pdata))
 	
@@ -747,7 +747,8 @@ function leader_isgreater(l1::Union{DiffPoly,Integer,Rational},l2::Union{DiffPol
 	end
 end
 
-#Alrogithm for one differential indeterminate
+#Differential reduction
+#Alrogithm for one differential indeterminate and one reductant
 function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet})
     """
     Performs a differential reduction of p with respect to q
@@ -757,8 +758,6 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet
 		#head reduction (to be implemented)
 		throw(DomainError("More than one differential indeterminate. To be defined..."))
 	end
-	# case distinctions:
-	# constants
 	# reduction modulo several differential polynomials: selection (Daniel's book) and reduction
 	leadg = leader(p)
 	leadf = leader(q)
@@ -774,6 +773,98 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, q::Union{DiffPoly,DiffIndet
 	end
 	return parent(p)(divrem(g.algdata,f.algdata)[2])
 end
+
+#Differential reduction
+#Algorithm with several reductant and one differential indeterminate
+
+
+#function JanetBases
+
+
+function diffreduction(p::Union{DiffPoly,DiffIndet}, Q::Vector{Union{DiffPoly,DiffIndet}})
+		return 0
+end
+
+function ConeDecompose(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Int64)
+	G_ords = map(indet_order, map(leader, G))
+	return ConeDecomposeVector(G_ords,eta)
+end
+
+#eta --> partial_1, ..., partial_k
+
+function ConeDecomposeVector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Int64)
+	Delta = Set(G)
+	N = length(Delta)
+	S = Set{Vector{Vector{Int64}}}([])
+	C = map(g -> [g, zeros(Int64, eta)], G)
+	j_min = 0
+	while !isempty(Delta) && j_min<eta
+		if length(Delta)<N
+			j_min = 1
+			C1 = map(k -> C[k], findall(c -> c[1] in Delta && c[2][j_min]==1, C))
+			while !(isempty(C1))
+				j_min+=1
+				C1 = map(k -> C[k], findall(c -> c[1] in Delta && c[2][j_min]==1, C))
+			end
+			#C2 = map(k -> C[k], findall(c -> c[1] in S && c[2][j_min]==1, C))
+			C2 = map(k -> S[k], findall(c -> c[2][j_min]==1, S))
+			while isempty(C2)
+				j_min += 1
+				C2 = map(k -> S[k], findall(c -> c[2][j_min]==1, S))
+			end
+		end
+		Delta_i = collect(Delta)
+		for i in (j_min+1):eta
+			Delta_i = map(k -> C[k], findall(c -> c[1] in Delta_i, C))
+			maxsum = findmax([sum(c[2]) for c in Delta_i])[1]
+			Delta_i = map(k -> Delta_i[k], findall(c -> sum(c[2])==maxsum, Delta_i))
+			Delta_i = map(c -> c[1], Delta_i)
+			maxpow_i = findmax([g[i] for g in Delta_i])[1]
+			S = map(k -> Delta_i[k], findall(g -> g[i]==maxpow_i, Delta_i))
+			S = map(k -> C[k], findall(c -> c[1] in S, C))
+			C = collect(setdiff(Set(C),Set(S)))
+			S = map(c -> [c[1],append!(c[2][1:(i-1)],[1],c[2][(i+1):eta])], S)
+			C = append!(C,S)
+		end
+		Delta = setdiff(Delta, Set(map(c -> c[1], S)))
+	end
+	return C
+end
+
+
+# Book version
+
+function ConeDecomposeBook(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Vector{Int64})
+	G_ords = map(indet_order, map(leader, G))
+	return ConeDecomposeVectorBook(G_ords,eta)
+end
+
+function ConeDecomposeVectorBook(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Vector{Int64})
+	println(G,"\t",eta)
+	if length(G) <= 1 || eta == []
+		return map(g -> [g,eta],G)
+	end
+	d = maximum(map(g -> g[eta[1]],G))
+	#cones
+	C = Vector{Any}(undef, d+1) 
+	#two generic functions for the recursion
+	UpdateEtaElm(g,i) = append!(g[1:(eta[1]-1)],[i],g[(eta[1]+1):length(g)])
+	PosEtaDegj(g,j) = (g[eta[1]]==j) ? true : false
+	for i in 0:d
+		Gi=[]
+		for j in 0:i
+			Gj = map(k -> G[k], findall(g -> PosEtaDegj(g,j), G))
+			Gj = map(g -> UpdateEtaElm(g,i), Gj)
+			Gi = append!(Gi, Gj)
+		end
+		#println([Gi,eta[2:length(eta)]])
+		C[i+1] = ConeDecomposeVectorBook(Gi, eta[2:length(eta)])
+	end
+		#println(C[d+1])
+		C[d+1] = map(c -> [c[1], append!([eta[1]],c[2])], C[d+1])
+		return C
+end
+
 
 #--------------------------------------------------------------------------------
 
