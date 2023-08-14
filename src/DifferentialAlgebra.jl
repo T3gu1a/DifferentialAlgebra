@@ -798,7 +798,7 @@ function ConeDecomposeVector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::I
 	S = Set{Vector{Vector{Int64}}}([])
 	C = map(g -> [g, zeros(Int64, eta)], G)
 	j_min = 0
-	while !isempty(Delta) && j_min<eta
+	while !isempty(Delta) #&& j_min<eta
 		if length(Delta)<N
 			j_min = 1
 			C1 = map(k -> C[k], findall(c -> c[1] in Delta && c[2][j_min]==1, C))
@@ -813,18 +813,28 @@ function ConeDecomposeVector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::I
 				C2 = map(k -> S[k], findall(c -> c[2][j_min]==1, S))
 			end
 		end
-		Delta_i = collect(Delta)
-		for i in (j_min+1):eta
-			Delta_i = map(k -> C[k], findall(c -> c[1] in Delta_i, C))
-			maxsum = findmax([sum(c[2]) for c in Delta_i])[1]
-			Delta_i = map(k -> Delta_i[k], findall(c -> sum(c[2])==maxsum, Delta_i))
-			Delta_i = map(c -> c[1], Delta_i)
-			maxpow_i = findmax([g[i] for g in Delta_i])[1]
-			S = map(k -> Delta_i[k], findall(g -> g[i]==maxpow_i, Delta_i))
-			S = map(k -> C[k], findall(c -> c[1] in S, C))
+		#j_min==eta
+		if j_min==eta
+			mu = S[1][2]
+			S = map(k -> C[k], findall(c -> c[1] in Delta, C))
 			C = collect(setdiff(Set(C),Set(S)))
-			S = map(c -> [c[1],append!(c[2][1:(i-1)],[1],c[2][(i+1):eta])], S)
+			S = map(c -> [c[1],mu], S)
 			C = append!(C,S)
+			Delta = Set([])
+		else
+			Delta_i = collect(Delta)
+			for i in (j_min+1):eta
+				Delta_i = map(k -> C[k], findall(c -> c[1] in Delta_i, C))
+				maxsum = findmax([sum(c[2]) for c in Delta_i])[1]
+				Delta_i = map(k -> Delta_i[k], findall(c -> sum(c[2])==maxsum, Delta_i))
+				Delta_i = map(c -> c[1], Delta_i)
+				maxpow_i = findmax([g[i] for g in Delta_i])[1]
+				S = map(k -> Delta_i[k], findall(g -> g[i]==maxpow_i, Delta_i))
+				S = map(k -> C[k], findall(c -> c[1] in S, C))
+				C = collect(setdiff(Set(C),Set(S)))
+				S = map(c -> [c[1],append!(c[2][1:(i-1)],[1],c[2][(i+1):eta])], S)
+				C = append!(C,S)
+			end
 		end
 		Delta = setdiff(Delta, Set(map(c -> c[1], S)))
 	end
