@@ -785,14 +785,14 @@ function diffreduction(p::Union{DiffPoly,DiffIndet}, Q::Vector{Union{DiffPoly,Di
 		return 0
 end
 
-function ConeDecompose(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Int64)
+function cone_decompose(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Int64)
 	G_ords = map(indet_order, map(leader, G))
-	return ConeDecomposeVector(G_ords,eta)
+	return cone_decompose_vector(G_ords,eta)
 end
 
 #eta --> partial_1, ..., partial_k
 
-function ConeDecomposeVector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Int64)
+function cone_decompose_vector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Int64)
 	Delta = Set(G)
 	N = length(Delta)
 	S = Set{Vector{Vector{Int64}}}([])
@@ -844,19 +844,18 @@ end
 
 # Book version
 
-function ConeDecomposeBook(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Vector{Int64})
+function ConeDecompose(G::Union{Vector{DiffPoly},Vector{DiffIndet}}, eta::Vector{Int64})
 	G_ords = map(indet_order, map(leader, G))
-	return ConeDecomposeVectorBook(G_ords,eta)
+	return ConeDecomposeVector(G_ords,eta)
 end
 
-function ConeDecomposeVectorBook(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Vector{Int64})
-	println(G,"\t",eta)
+function ConeDecomposeVector(G::Union{Vector{Vector{Int64}},Vector{Any}}, eta::Vector{Int64})
 	if length(G) <= 1 || eta == []
 		return map(g -> [g,eta],G)
 	end
 	d = maximum(map(g -> g[eta[1]],G))
 	#cones
-	C = Vector{Any}(undef, d+1) 
+	C = []
 	#two generic functions for the recursion
 	UpdateEtaElm(g,i) = append!(g[1:(eta[1]-1)],[i],g[(eta[1]+1):length(g)])
 	PosEtaDegj(g,j) = (g[eta[1]]==j) ? true : false
@@ -867,12 +866,11 @@ function ConeDecomposeVectorBook(G::Union{Vector{Vector{Int64}},Vector{Any}}, et
 			Gj = map(g -> UpdateEtaElm(g,i), Gj)
 			Gi = append!(Gi, Gj)
 		end
-		#println([Gi,eta[2:length(eta)]])
-		C[i+1] = ConeDecomposeVectorBook(Gi, eta[2:length(eta)])
+		C = append!(C,[ConeDecomposeVector(Gi,eta[2:length(eta)])])
 	end
-		#println(C[d+1])
+	
 		C[d+1] = map(c -> [c[1], append!([eta[1]],c[2])], C[d+1])
-		return C
+		return unique(reduce(append!, C, init=Any[]))
 end
 
 
