@@ -457,6 +457,13 @@ function DifferentialPolynomialRing(R::AbstractAlgebra.Ring, varnames::Array{Str
 	return R, Tuple([DiffIndet(R,v) for v in varnames])
 end
 
+mutable struct Cone 
+	P::DiffPoly
+	Leader::DiffPoly
+	Derivation::Vector{Bool}
+
+end
+
 function AbstractAlgebra.gens(R::DifferentialPolyRing)
 	return [gen(R.poly_ring,(j-1)*(R.max_ord+1)+1) for j in 1:length(R.varnames)] 
     #return [DiffPoly(R, str_to_var(form_derivative(v, 0), R.poly_ring)) for v in R.varnames]
